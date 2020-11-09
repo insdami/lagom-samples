@@ -6,9 +6,7 @@ import com.example.shoppingcart.api.ShoppingCartItem
 import com.example.shoppingcart.api.Quantity
 import com.example.shoppingcart.api.ShoppingCartReport
 import com.example.shoppingcart.api.ShoppingCartService
-
 import com.example.shoppingcart.impl.ShoppingCart._
-
 import com.lightbend.lagom.scaladsl.api.ServiceCall
 import com.lightbend.lagom.scaladsl.api.broker.Topic
 import com.lightbend.lagom.scaladsl.api.transport.BadRequest
@@ -19,9 +17,11 @@ import com.lightbend.lagom.scaladsl.persistence.PersistentEntityRegistry
 
 import scala.concurrent.ExecutionContext
 import akka.cluster.sharding.typed.scaladsl.ClusterSharding
+
 import scala.concurrent.duration._
 import akka.util.Timeout
 import akka.cluster.sharding.typed.scaladsl.EntityRef
+import org.slf4j.LoggerFactory
 
 /**
  * Implementation of the `ShoppingCartService`.
@@ -40,14 +40,17 @@ class ShoppingCartServiceImpl(
     clusterSharding.entityRefFor(ShoppingCart.typeKey, id)
 
   implicit val timeout = Timeout(5.seconds)
+  val logger = LoggerFactory.getLogger(getClass)
 
   override def get(id: String): ServiceCall[NotUsed, ShoppingCartView] = ServiceCall { _ =>
+    logger.info(s"Get $id")
     entityRef(id)
       .ask(reply => Get(reply))
       .map(cartSummary => convertShoppingCart(id, cartSummary))
   }
 
   override def addItem(id: String): ServiceCall[ShoppingCartItem, ShoppingCartView] = ServiceCall { update =>
+    logger.info(s"Add $id")
     entityRef(id)
       .ask(reply => AddItem(update.itemId, update.quantity, reply))
       .map { confirmation =>
@@ -56,6 +59,7 @@ class ShoppingCartServiceImpl(
   }
 
   override def removeItem(id: String, itemId: String): ServiceCall[NotUsed, ShoppingCartView] = ServiceCall { update =>
+    logger.info(s"Remove $id")
     entityRef(id)
       .ask(reply => RemoveItem(itemId, reply))
       .map { confirmation =>
@@ -65,6 +69,7 @@ class ShoppingCartServiceImpl(
 
   override def adjustItemQuantity(id: String, itemId: String): ServiceCall[Quantity, ShoppingCartView] = ServiceCall {
     update =>
+      logger.info(s"Adjust $id")
       entityRef(id)
         .ask(reply => AdjustItemQuantity(itemId, update.quantity, reply))
         .map { confirmation =>
@@ -73,6 +78,7 @@ class ShoppingCartServiceImpl(
   }
 
   override def checkout(id: String): ServiceCall[NotUsed, ShoppingCartView] = ServiceCall { _ =>
+    logger.info(s"Checkout $id")
     entityRef(id)
       .ask(replyTo => Checkout(replyTo))
       .map { confirmation =>

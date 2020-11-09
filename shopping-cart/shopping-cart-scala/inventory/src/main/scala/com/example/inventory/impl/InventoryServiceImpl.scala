@@ -9,6 +9,7 @@ import com.lightbend.lagom.scaladsl.api.ServiceCall
 import com.example.inventory.api.InventoryService
 import com.example.shoppingcart.api.ShoppingCartView
 import com.example.shoppingcart.api.ShoppingCartService
+import org.slf4j.LoggerFactory
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
@@ -22,6 +23,7 @@ import scala.concurrent.Future
 class InventoryServiceImpl(shoppingCartService: ShoppingCartService) extends InventoryService {
 
   private val inventory = TrieMap.empty[String, AtomicInteger]
+  val logger = LoggerFactory.getLogger(getClass)
 
   private def getInventory(itemId: String) = inventory.getOrElseUpdate(itemId, new AtomicInteger)
 
@@ -36,10 +38,13 @@ class InventoryServiceImpl(shoppingCartService: ShoppingCartService) extends Inv
   })
 
   override def get(itemId: String): ServiceCall[NotUsed, Int] = ServiceCall { _ =>
+    logger.info(s"Get $itemId")
     Future.successful(inventory.get(itemId).fold(0)(_.get()))
   }
 
   override def add(itemId: String): ServiceCall[Int, Done] = ServiceCall { quantity =>
+    logger.info(s"Add $itemId")
+
     getInventory(itemId).addAndGet(quantity)
     Future.successful(Done)
   }
